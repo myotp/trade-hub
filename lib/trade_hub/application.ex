@@ -17,7 +17,10 @@ defmodule TradeHub.Application do
       # Start a worker by calling: TradeHub.Worker.start_link(arg)
       # {TradeHub.Worker, arg},
       # Start to serve requests, typically the last entry
-      TradeHubWeb.Endpoint
+      TradeHubWeb.Endpoint,
+
+      # Exchange
+      TradeHub.Exchange.ExchangeSupervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

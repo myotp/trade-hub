@@ -184,4 +184,414 @@ defmodule TradeHub.MatchingEngine.FifoEngineTest do
              } = engine
     end
   end
+
+  describe "matching-order to execute buy order" do
+    test "an order can't match will be added to passive orders" do
+      passive_sell_order = %{order_id: 1001, side: :SELL, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_sell_order)
+
+      buy_order = %{
+        order_id: 1002,
+        side: :BUY,
+        price: 98,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{
+               buys: [%FifoEngine.MinimumOrder{order_id: 1002}],
+               sells: [%FifoEngine.MinimumOrder{order_id: 1001}],
+               executed: []
+             } =
+               FifoEngine.add_order(engine, buy_order)
+    end
+
+    test "matching order will execute order with a match" do
+      passive_sell_order = %{order_id: 1001, side: :SELL, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_sell_order)
+
+      aggressive_buy_order = %{
+        order_id: 1002,
+        side: :BUY,
+        price: 99,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, aggressive_buy_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+
+    test "matching order might match multiple passive orders" do
+      sell_order1 = %{order_id: 1001, side: :SELL, price: 99, quantity: 20, priority: 500}
+      sell_order2 = %{order_id: 1002, side: :SELL, price: 99, quantity: 30, priority: 502}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(sell_order1)
+        |> FifoEngine.add_order(sell_order2)
+
+      aggressive_buy_order = %{
+        order_id: 1003,
+        side: :BUY,
+        price: 99,
+        quantity: 50,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, aggressive_buy_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99, quantity: 30}
+               | partially_executed_orders
+             ] = Enum.sort_by(executed, & &1.order_id)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 99, quantity: 30}
+             ] = Enum.sort_by(partially_executed_orders, & &1.quantity)
+    end
+
+    test "limit order executed at a better price" do
+      passive_sell_order = %{order_id: 1001, side: :SELL, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_sell_order)
+
+      aggressive_buy_order = %{
+        order_id: 1002,
+        side: :BUY,
+        price: 200,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, aggressive_buy_order)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+
+    test "price might be different in partially executed orders" do
+      sell1 = %{order_id: 1001, side: :SELL, price: 99, quantity: 20, priority: 500}
+      sell2 = %{order_id: 1002, side: :SELL, price: 103, quantity: 30, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(sell1)
+        |> FifoEngine.add_order(sell2)
+
+      aggressive_buy_order = %{
+        order_id: 1003,
+        side: :BUY,
+        price: 200,
+        quantity: 50,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, aggressive_buy_order)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 103} | partially_executed_orders
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 103, quantity: 30}
+             ] = Enum.sort_by(partially_executed_orders, & &1.quantity)
+    end
+
+    test "new order might be partially executed" do
+      sell_order = %{order_id: 1001, side: :SELL, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(sell_order)
+
+      aggressive_buy_order = %{
+        order_id: 1002,
+        side: :BUY,
+        price: 200,
+        quantity: 100,
+        priority: 500
+      }
+
+      assert %FifoEngine{
+               buys: [%FifoEngine.MinimumOrder{order_id: 1002, price: 200, quantity: 80}],
+               sells: [],
+               executed: executed
+             } =
+               FifoEngine.add_order(engine, aggressive_buy_order)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99, quantity: 20}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+
+    test "passive orders might be partially executed" do
+      sell_order = %{order_id: 1001, side: :SELL, price: 99, quantity: 40, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(sell_order)
+
+      aggressive_buy_order = %{
+        order_id: 1002,
+        side: :BUY,
+        price: 200,
+        quantity: 10,
+        priority: 500
+      }
+
+      assert %FifoEngine{
+               buys: [],
+               sells: [%FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 30}],
+               executed: executed
+             } =
+               FifoEngine.add_order(engine, aggressive_buy_order)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 10},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99, quantity: 10}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+  end
+
+  describe "matching-order to execute sell order" do
+    test "an order can't match will be added to passive orders" do
+      passive_buy_order = %{order_id: 1001, side: :BUY, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_buy_order)
+
+      sell_order = %{
+        order_id: 1002,
+        side: :SELL,
+        price: 105,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{
+               buys: [%FifoEngine.MinimumOrder{order_id: 1001}],
+               sells: [%FifoEngine.MinimumOrder{order_id: 1002}],
+               executed: []
+             } =
+               FifoEngine.add_order(engine, sell_order)
+    end
+
+    test "matching order will execute order with a match" do
+      passive_buy_order = %{order_id: 1001, side: :BUY, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_buy_order)
+
+      sell_order = %{
+        order_id: 1002,
+        side: :SELL,
+        price: 99,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, sell_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+
+    test "matching order might match multiple passive orders" do
+      buy1 = %{order_id: 1001, side: :BUY, price: 99, quantity: 20, priority: 500}
+      buy2 = %{order_id: 1002, side: :BUY, price: 99, quantity: 30, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(buy1)
+        |> FifoEngine.add_order(buy2)
+
+      sell_order = %{
+        order_id: 1003,
+        side: :SELL,
+        price: 99,
+        quantity: 50,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, sell_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99} | partially_executed_orders
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 99, quantity: 30}
+             ] = Enum.sort_by(partially_executed_orders, & &1.quantity)
+    end
+
+    test "limit order executed at a better price" do
+      passive_buy_order = %{order_id: 1001, side: :BUY, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_buy_order)
+
+      sell_order = %{
+        order_id: 1002,
+        side: :SELL,
+        price: 88,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, sell_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+
+    test "price might be different in partially executed orders" do
+      buy1 = %{order_id: 1001, side: :BUY, price: 99, quantity: 20, priority: 500}
+      buy2 = %{order_id: 1002, side: :BUY, price: 95, quantity: 30, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(buy1)
+        |> FifoEngine.add_order(buy2)
+
+      sell_order = %{
+        order_id: 1003,
+        side: :SELL,
+        price: 90,
+        quantity: 50,
+        priority: 500
+      }
+
+      assert %FifoEngine{buys: [], sells: [], executed: executed} =
+               FifoEngine.add_order(engine, sell_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 95} | partially_executed_orders
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1003, price: 95, quantity: 30}
+             ] = Enum.sort_by(partially_executed_orders, & &1.quantity)
+    end
+
+    test "new order might be partially executed" do
+      passive_buy_order = %{order_id: 1001, side: :BUY, price: 99, quantity: 20, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_buy_order)
+
+      sell_order = %{
+        order_id: 1002,
+        side: :SELL,
+        price: 90,
+        quantity: 50,
+        priority: 500
+      }
+
+      assert %FifoEngine{
+               buys: [],
+               sells: [%FifoEngine.MinimumOrder{order_id: 1002, price: 90, quantity: 30}],
+               executed: executed
+             } =
+               FifoEngine.add_order(engine, sell_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99, quantity: 20}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+
+    test "passive orders might be partially executed" do
+      passive_buy_order = %{order_id: 1001, side: :BUY, price: 99, quantity: 50, priority: 500}
+
+      engine =
+        FifoEngine.new()
+        |> FifoEngine.add_order(passive_buy_order)
+
+      sell_order = %{
+        order_id: 1002,
+        side: :SELL,
+        price: 90,
+        quantity: 20,
+        priority: 500
+      }
+
+      assert %FifoEngine{
+               buys: [%FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 30}],
+               sells: [],
+               executed: executed
+             } =
+               FifoEngine.add_order(engine, sell_order)
+
+      assert executed != []
+
+      assert [
+               %FifoEngine.MinimumOrder{order_id: 1001, price: 99, quantity: 20},
+               %FifoEngine.MinimumOrder{order_id: 1002, price: 99, quantity: 20}
+             ] =
+               Enum.sort_by(executed, & &1.order_id)
+    end
+  end
 end

@@ -31,3 +31,7 @@ config :logger, level: :warning
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# Mox
+config :trade_hub,
+  user_order_persist_mod: MockUserOrderDb

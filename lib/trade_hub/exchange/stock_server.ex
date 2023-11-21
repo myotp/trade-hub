@@ -4,6 +4,7 @@ defmodule TradeHub.Exchange.StockServer do
 
   alias TradeHub.Exchange.OrderBook
   alias TradeHub.MatchingEngine
+  alias Phoenix.PubSub
 
   defmodule State do
     defstruct [
@@ -75,8 +76,10 @@ defmodule TradeHub.Exchange.StockServer do
          %State{state | order_book: order_book, matching_engine: matching_engine}}
 
       executed ->
-        # TODO: Publish updated orders
         {updated_order_book, updated_user_orders} = OrderBook.run_executed(order_book, executed)
+        PubSub.broadcast(TradeHub.PubSub, "matching_order_executed", executed)
+        PubSub.broadcast(TradeHub.PubSub, "user_order_changed", updated_user_orders)
+
         price = last_price(executed, new_order.side)
 
         user_order_status =

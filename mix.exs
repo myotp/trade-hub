@@ -51,7 +51,9 @@ defmodule TradeHub.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
       {:plug_cowboy, "~> 2.5"},
-      {:mix_test_watch, "~> 1.1", only: [:dev, :test], runtime: false}
+      {:mix_test_watch, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:mox, "~> 1.1", only: :test},
+      {:hammox, "~> 0.7.0", only: :test}
     ]
   end
 

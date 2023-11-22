@@ -9,7 +9,8 @@ defmodule TradeHub.Exchange.ExchangeSupervisor do
   def init(_args) do
     children = [
       {Registry, [keys: :unique, name: TradeHub.Exchange.StockRegistry]},
-      TradeHub.Exchange.StockServerManager
+      TradeHub.Exchange.StockServerManager,
+      TradeHub.Exchange.StockServerStarter
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

@@ -34,4 +34,4 @@ config :phoenix, :plug_init_mode, :runtime
 
 # Mox
 config :trade_hub,
-  user_order_persist_mod: MockUserOrderDb
+  user_order_db_mod: MockUserOrderDb

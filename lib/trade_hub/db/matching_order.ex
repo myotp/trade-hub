@@ -1,4 +1,4 @@
-defmodule TradeHub.OrderPersist.MatchingOrder do
+defmodule TradeHub.Db.MatchingOrder do
   use Ecto.Schema
   import Ecto.Changeset
   alias TradeHub.Repo

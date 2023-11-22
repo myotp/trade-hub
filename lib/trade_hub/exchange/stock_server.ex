@@ -77,8 +77,8 @@ defmodule TradeHub.Exchange.StockServer do
 
       executed ->
         {updated_order_book, updated_user_orders} = OrderBook.run_executed(order_book, executed)
-        PubSub.broadcast(TradeHub.PubSub, "matching_order_executed", executed)
-        PubSub.broadcast(TradeHub.PubSub, "user_order_changed", updated_user_orders)
+        PubSub.broadcast(TradeHub.PubSub, "executed_matching_orders", executed)
+        PubSub.broadcast(TradeHub.PubSub, "changed_user_orders", updated_user_orders)
 
         price = last_price(executed, new_order.side)
 

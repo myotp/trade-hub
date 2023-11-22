@@ -1,1 +1,1 @@
-Mox.defmock(MockUserOrderDb, for: TradeHub.OrderPersist.UserOrderDb)
+Mox.defmock(MockUserOrderDb, for: TradeHub.Db.UserOrderDb)

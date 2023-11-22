@@ -1,6 +1,7 @@
-defmodule TradeHub.OrderPersist.UserOrderDbTest do
+defmodule TradeHub.Db.UserOrderDbTest do
   use TradeHub.DataCase
-  alias TradeHub.OrderPersist.UserOrderDb
+  alias TradeHub.Db.UserOrderDb
+  alias TradeHub.Db.StockDb
 
   describe "save_user_order/1" do
     test "successfully write user order to DB" do
@@ -15,9 +16,12 @@ defmodule TradeHub.OrderPersist.UserOrderDbTest do
         type: :LIMITED
       }
 
-      assert {:ok, order_from_db} =
+      {:ok, _} = StockDb.create_stock("AAPL")
+
+      assert {:ok, order_id} =
                UserOrderDb.save_order_and_get_order_id(user_order)
-               |> IO.inspect(label: "USER ORDER RESULT")
+
+      assert is_integer(order_id)
     end
   end
 end

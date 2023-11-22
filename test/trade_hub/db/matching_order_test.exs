@@ -1,6 +1,6 @@
-defmodule TradeHub.OrderPersist.MatchingOrderTest do
+defmodule TradeHub.Db.MatchingOrderTest do
   use TradeHub.DataCase
-  alias TradeHub.OrderPersist.MatchingOrder
+  alias TradeHub.Db.MatchingOrder
 
   describe "save_order/1" do
     test "successfully write matching order to DB" do

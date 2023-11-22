@@ -1,13 +1,15 @@
 defmodule TradeHub.UserOrder.OrderAddTest do
   use TradeHub.DataCase
   alias TradeHub.UserOrder.OrderAdd
+  alias TradeHub.Db.StockDb
 
   setup do
-    old_mod = Application.get_env(:trade_hub, :user_order_persist_mod)
-    Application.put_env(:trade_hub, :user_order_persist_mod, TradeHub.OrderPersist.UserOrderDb)
+    old_mod = Application.get_env(:trade_hub, :user_order_db_mod)
+    Application.put_env(:trade_hub, :user_order_db_mod, TradeHub.Db.UserOrderDb)
+    StockDb.create_stock("AAPL")
 
     on_exit(fn ->
-      Application.put_env(:trade_hub, :user_order_persist_mod, old_mod)
+      Application.put_env(:trade_hub, :user_order_db_mod, old_mod)
     end)
   end
 

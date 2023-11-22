@@ -32,7 +32,7 @@ defmodule TradeHub.UserOrder.OrderAdd do
         type: :LIMITED
       }
 
-    {:ok, order_id} = user_order_persist_mod().save_order_and_get_order_id(args)
+    {:ok, order_id} = user_order_db_mod().save_order_and_get_order_id(args)
     %__MODULE__{args | order_id: order_id}
   end
 
@@ -43,7 +43,7 @@ defmodule TradeHub.UserOrder.OrderAdd do
     seconds * 100 + div(milliseconds, 10000)
   end
 
-  defp user_order_persist_mod() do
-    Application.get_env(:trade_hub, :user_order_persist_mod, TradeHub.OrderPersist.UserOrderDb)
+  defp user_order_db_mod() do
+    Application.get_env(:trade_hub, :user_order_db_mod, TradeHub.Db.UserOrderDb)
   end
 end

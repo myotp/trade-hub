@@ -1,4 +1,4 @@
-defmodule TradeHub.OrderPersist.UserOrderDb do
+defmodule TradeHub.Db.UserOrderDb do
   use Ecto.Schema
   import Ecto.Changeset
   alias TradeHub.Repo
@@ -41,7 +41,6 @@ defmodule TradeHub.OrderPersist.UserOrderDb do
       |> changeset()
       |> Repo.insert(returning: [:order_id])
 
-    IO.inspect(label: "ORDER FROM DB")
     {:ok, order.order_id}
   end
 end

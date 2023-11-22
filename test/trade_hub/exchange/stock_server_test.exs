@@ -112,8 +112,8 @@ defmodule TradeHub.Exchange.StockServerTest do
       |> expect(:save_order_and_get_order_id, fn _ -> {:ok, 8002} end)
       |> expect(:save_order_and_get_order_id, fn _ -> {:ok, 8003} end)
 
-      Phoenix.PubSub.subscribe(TradeHub.PubSub, "matching_order_executed")
-      Phoenix.PubSub.subscribe(TradeHub.PubSub, "user_order_changed")
+      Phoenix.PubSub.subscribe(TradeHub.PubSub, "executed_matching_orders")
+      Phoenix.PubSub.subscribe(TradeHub.PubSub, "changed_user_orders")
 
       {:ok, _pid} =
         start_supervised(

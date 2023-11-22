@@ -4,8 +4,7 @@ defmodule TradeHub.Repo.Migrations.CreateUserOrdersTable do
   def change do
     create table(:user_orders, primary_key: false) do
       add :order_id, :bigserial, primary_key: true
-      # TODO: references
-      add :stock_symbol, :text, null: false
+      add :stock_symbol, references(:stocks, column: :symbol, type: :text), null: false
       # TODO: references
       add :client_id, :bigint, null: false
       add :side, :integer, null: false
